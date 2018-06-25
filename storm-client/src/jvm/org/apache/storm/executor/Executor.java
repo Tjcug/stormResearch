@@ -21,18 +21,6 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
 import com.lmax.disruptor.EventHandler;
 import com.lmax.disruptor.dsl.ProducerType;
-import java.io.IOException;
-import java.lang.reflect.Field;
-import java.net.UnknownHostException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Random;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 import org.apache.storm.Config;
 import org.apache.storm.Constants;
 import org.apache.storm.StormTimer;
@@ -51,11 +39,7 @@ import org.apache.storm.executor.error.IReportError;
 import org.apache.storm.executor.error.ReportError;
 import org.apache.storm.executor.error.ReportErrorAndDie;
 import org.apache.storm.executor.spout.SpoutExecutor;
-import org.apache.storm.generated.Bolt;
-import org.apache.storm.generated.DebugOptions;
-import org.apache.storm.generated.Grouping;
-import org.apache.storm.generated.SpoutSpec;
-import org.apache.storm.generated.StormTopology;
+import org.apache.storm.generated.*;
 import org.apache.storm.grouping.LoadAwareCustomStreamGrouping;
 import org.apache.storm.grouping.LoadMapping;
 import org.apache.storm.metric.api.IMetric;
@@ -65,24 +49,20 @@ import org.apache.storm.stats.CommonStats;
 import org.apache.storm.stats.SpoutExecutorStats;
 import org.apache.storm.stats.StatsUtil;
 import org.apache.storm.task.WorkerTopologyContext;
-import org.apache.storm.tuple.AddressedTuple;
-import org.apache.storm.tuple.Fields;
-import org.apache.storm.tuple.Tuple;
-import org.apache.storm.tuple.TupleImpl;
-import org.apache.storm.tuple.Values;
-import org.apache.storm.utils.ConfigUtils;
-import org.apache.storm.utils.Utils;
-import org.apache.storm.utils.DisruptorBackpressureCallback;
-import org.apache.storm.utils.DisruptorQueue;
-import org.apache.storm.utils.ObjectReader;
-import org.apache.storm.utils.Time;
-import org.apache.storm.utils.WorkerBackpressureThread;
+import org.apache.storm.tuple.*;
+import org.apache.storm.utils.*;
 import org.json.simple.JSONValue;
 import org.json.simple.parser.ParseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.lang.reflect.Field;
+import java.net.UnknownHostException;
+import java.util.*;
 import java.util.concurrent.Callable;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 public abstract class Executor implements Callable, EventHandler<Object> {
@@ -245,6 +225,9 @@ public abstract class Executor implements Callable, EventHandler<Object> {
         LOG.info("Loading executor tasks " + componentId + ":" + executorId);
 
         registerBackpressure();
+
+        //5.在Executor线程 执行execute()方法后，不断的Loop调用executorTransfer的Callable接口。一旦sendQueue buffer达到一定的阈值后。
+        // 调用ExecutorTransfer的Call方法
         Utils.SmartThread systemThreads =
                 Utils.asyncLoop(executorTransfer, executorTransfer.getName(), reportErrorDie);
 
@@ -259,6 +242,13 @@ public abstract class Executor implements Callable, EventHandler<Object> {
 
     public abstract void tupleActionFn(int taskId, TupleImpl tuple) throws Exception;
 
+    /**
+     * 15.Executor调用OnEvent()方法接收从Worker发送过来的AddressTuple.然后调用tupleActionFn发送到相应的BoltExecutor或者SpoutExecutor
+     * @param event
+     * @param seq
+     * @param endOfBatch
+     * @throws Exception
+     */
     @SuppressWarnings("unchecked")
     @Override
     public void onEvent(Object event, long seq, boolean endOfBatch) throws Exception {

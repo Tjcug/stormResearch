@@ -17,12 +17,6 @@
  */
 package org.apache.storm.executor.bolt;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-import java.util.Set;
 import org.apache.storm.daemon.Acker;
 import org.apache.storm.daemon.Task;
 import org.apache.storm.hooks.info.BoltAckInfo;
@@ -33,10 +27,12 @@ import org.apache.storm.tuple.MessageId;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.TupleImpl;
 import org.apache.storm.tuple.Values;
-import org.apache.storm.utils.Utils;
 import org.apache.storm.utils.Time;
+import org.apache.storm.utils.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.*;
 
 public class BoltOutputCollectorImpl implements IOutputCollector {
 
@@ -68,6 +64,14 @@ public class BoltOutputCollectorImpl implements IOutputCollector {
         boltEmit(streamId, anchors, tuple, taskId);
     }
 
+    /**
+     * 1.首先Bolt调用boltEmit() 发送一个tuple到下游bolt
+     * @param streamId
+     * @param anchors
+     * @param values
+     * @param targetTaskId
+     * @return
+     */
     private List<Integer> boltEmit(String streamId, Collection<Tuple> anchors, List<Object> values, Integer targetTaskId) {
         List<Integer> outTasks;
         if (targetTaskId != null) {

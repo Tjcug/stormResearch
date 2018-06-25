@@ -61,6 +61,11 @@ public class DeserializingConnectionCallback implements IConnectionCallback, IMe
         sizeMetricsEnabled = ObjectReader.getBoolean(conf.get(Config.TOPOLOGY_SERIALIZED_MESSAGE_SIZE_METRICS), false);
     }
 
+    /**
+     * 13.当有消息发送到Worker中时。Worker接收线程从接收队列中读取TaskMessage序列化后的数据，然后将其进行反序列化操作。最终得到带有消息头的AddressTuple。
+     * 然后调用回调函数的transfer方法。
+     * @param batch the messages to be processed
+     */
     @Override
     public void recv(List<TaskMessage> batch) {
         KryoTupleDeserializer des = _des.get();
