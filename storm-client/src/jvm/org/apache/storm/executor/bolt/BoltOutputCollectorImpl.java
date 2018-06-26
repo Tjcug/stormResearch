@@ -34,6 +34,10 @@ import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
+/**
+ * Storm ACK 源码分析
+ * 4.Bolt在发送消息时，系统需要继续对其进行跟踪，这些由Bolt新发送的消息对应于从Spout收到消息的衍生消息。Bolt使用bolt -emit函数来发送消息
+ */
 public class BoltOutputCollectorImpl implements IOutputCollector {
 
     private static final Logger LOG = LoggerFactory.getLogger(BoltOutputCollectorImpl.class);
@@ -80,6 +84,10 @@ public class BoltOutputCollectorImpl implements IOutputCollector {
             outTasks = taskData.getOutgoingTasks(streamId, values);
         }
 
+        /**
+         * Acker源码分析
+         * bolt-emit函数的传入参数为消息标记（ anchors ),它对应于该消息的父节点消息。为了保证Ack系统正常工作，用户需要明确其产生的消息是由哪些消息衍生的。
+         */
         for (Integer t : outTasks) {
             Map<Long, Long> anchorsToIds = new HashMap<>();
             if (anchors != null) {
@@ -167,6 +175,14 @@ public class BoltOutputCollectorImpl implements IOutputCollector {
         return -1;
     }
 
+
+    /**
+     * 根据key id 持续更新pending
+     *
+     * @param pending
+     * @param key
+     * @param id
+     */
     private void putXor(Map<Long, Long> pending, Long key, Long id) {
         Long curr = pending.get(key);
         if (curr == null) {
